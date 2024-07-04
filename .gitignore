@@ -1,0 +1,9 @@
+# Ignore specific file
+filebeat-7.10.0-linux-x86_64.tar.gz
+
+# Ignore specific Debian package
+filebeat-7.10.1-amd64.deb
+
+# Ignore directories
+filebeat-7.10.0-linux-x86_64/
+filebeat/

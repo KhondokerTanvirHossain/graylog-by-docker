@@ -1,0 +1,144 @@
+version: '3.8'
+services:
+  # MongoDB: Graylog uses MongoDB to store configuration and meta information.
+  mongo:
+    container_name: mongo
+    image: mongo:4.2
+    environment:
+      - TZ=Asia/Dhaka
+    volumes:
+      - mongo_data:/data/db
+    restart: unless-stopped
+  # Elasticsearch: Graylog uses Elasticsearch to store the actual log data.
+  elasticsearch:
+    container_name: elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - TZ=Asia/Dhaka
+    restart: unless-stopped
+  # Graylog: The actual log management and analysis platform.
+  graylog:
+    container_name: graylog
+    image: graylog/graylog:4.1
+    volumes:
+      - graylog_journal:/usr/share/graylog/data/journal
+    environment:
+      # CHANGE ME (must be at least 16 characters)!
+      - GRAYLOG_PASSWORD_SECRET=1234567890123456
+      # Password: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://127.0.0.1:9000/
+      - TZ=Asia/Dhaka
+      - GRAYLOG_ROOT_TIMEZONE=Asia/Dhaka
+    restart: unless-stopped
+    links:
+      - mongo
+      - elasticsearch
+    depends_on:
+      - mongo
+      - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP
+      - 1514:1514
+      # Syslog UDP
+      - 1514:1514/udp
+      # GELF TCP
+      - 12201:12201
+      # GELF UDP
+      - 12201:12201/udp
+      - 5044:5044
+  filebeat:
+    container_name: filebeat
+    image: docker.elastic.co/beats/filebeat:7.10.2
+    volumes:
+      # - /data/ims/log:/var/log
+      - ${LOG_PATH}:/var/log/file.log
+      - ${FILE_BEAT}:/usr/share/filebeat/filebeat.yml
+      - filebeat_data:/usr/share/filebeat/data
+    environment:
+      - TZ=Asia/Dhaka
+      - LOG_PATH=${LOG_PATH}
+      - FILE_BEAT=${FILE_BEAT}
+    restart: unless-stopped
+    command: ["filebeat", "-e", "-strict.perms=false"]
+    depends_on:
+      - graylog
+
+
+volumes:
+  mongo_data:
+    driver: local
+  es_data:
+    driver: local
+  graylog_journal:
+    driver: local
+  filebeat_data:
+    driver: local  
+
+
+
+
+# https://www.elastic.co/downloads/beats/filebeat
+# https://docs.google.com/document/d/1Zi37F8V9nTqQKcTzn3tRTiwcE3NFoXc1zXluCAqk_sA/edit
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# version: '3.8'
+
+# services:
+#   elasticsearch:
+#     image: docker.io/elastic/elasticsearch:7.10.2
+#     ports:
+#       - "9200:9200"
+#     environment:
+#       ES_JAVA_OPTS: "-Xms512m -Xmx512m"
+#       discovery.type: "single-node"
+#     networks:
+#       - graylog
+
+#   mongo:
+#     image: mongo:4.4
+#     networks:
+#       - graylog
+
+#   graylog:
+#     image: graylog/graylog:4.3.3
+#     ports:
+#       - "9000:9000"
+#       - "12201:12201/udp"
+#       - "1514:1514"
+#     environment:
+#       GRAYLOG_HTTP_EXTERNAL_URI: "http://127.0.0.1:9000/"
+#       # CHANGE ME (must be at least 16 characters)!
+#       GRAYLOG_PASSWORD_SECRET: "forpasswordencryption"
+#       # Password: admin
+#       GRAYLOG_ROOT_PASSWORD_SHA2: "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918"
+#     networks:
+#       - graylog
+#     depends_on:
+#       - elasticsearch
+#       - mongo
+
+# networks:
+#   graylog:
+#     driver: bridge 
